@@ -119,10 +119,10 @@ let copy_file force_overwrite src dst =
       + ...
 
    Here we construct the path to shared/autosubst based on the path to the executable.
-   HACK: Docs for [Sys.executable_name] say that it might not be an absolute path. 
+   HACK: Docs for [Sys.executable_name] say that it might not be an absolute path.
         But it is on Linux, so it works.
         What is the best way to access the files in the share directory? *)
-let data_dir = 
+let data_dir =
   let open Filename in
   let base_dir = dirname (dirname (Sys.executable_name)) in
   let data_dir = concat base_dir "share/coq-autosubst-ocaml" in
@@ -140,13 +140,14 @@ let gen_static_files force_overwrite dir scope gen_fext =
     | Wellscoped -> copy_static_file "fintype.v"
     | Unscoped -> copy_static_file "unscoped.v"
   in
-  let () = copy_static_file "core.v" in
-  if gen_fext 
-  then 
+  copy_static_file "core.v" ;
+  copy_static_file "RASimpl.v" ;
+  if gen_fext
+  then
     let () = match scope with
       | Wellscoped -> copy_static_file "fintype_axioms.v"
       | Unscoped -> copy_static_file "unscoped_axioms.v"
-    in 
+    in
     copy_static_file "core_axioms.v"
   else ()
 

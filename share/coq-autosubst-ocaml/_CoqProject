@@ -6,3 +6,4 @@ unscoped.v
 unscoped_axioms.v
 fintype.v
 fintype_axioms.v
+RAsimpl.v
