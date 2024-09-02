@@ -239,6 +239,17 @@ let gen_notations () =
     notation_ (notation_string sort ntype) (notation_modifiers sort ntype) ~scope:(notation_scope ntype) (notation_body sort ntype) in
   pure @@ List.map gen_notation notations
 
+(** Definitions for the rasimpl tactic **)
+
+let gen_quoted_subst () =
+  let na = "quoted_subst" in
+  let ctors = [
+    (* Find how to get tm, but also what to do when there are multiple syntax mutually defined *)
+    constructor_ "qsubst_atom" (arr1_ (arr1_ (ref_ "nat") (ref_ "should_be_tm")) (ref_ na))
+  ] in
+  let body = inductiveBody_ na [] ctors in
+  pure (inductive_ [ body ])
+
 let generate () =
   let* arguments = gen_arguments () in
   let* opaques = gen_opaques () in
@@ -246,20 +257,26 @@ let generate () =
   let* instances = gen_instances () in
   let* notations = gen_notations () in
   let* proper_instances = gen_proper_instances () in
-  let tactic_funs = [ gen_auto_unfold
-                    ; gen_auto_unfold_star
-                    ; gen_asimpl'
-                    ; gen_asimpl
-                    ; gen_asimpl_hyp
-                    ; gen_auto_case
-                    ; gen_substify
-                    ; gen_renamify ] in
-  let tactic_fext_funs = [ gen_asimpl_fext'
-                         ; gen_asimpl_fext
-                         ; gen_asimpl_fext_hyp
-                         ; gen_auto_case_fext
-                         ; gen_substify_fext
-                         ; gen_renamify_fext ] in
+  let tactic_funs = [
+    gen_auto_unfold ;
+    gen_auto_unfold_star ;
+    gen_asimpl' ;
+    gen_asimpl ;
+    gen_asimpl_hyp ;
+    gen_auto_case ;
+    gen_substify ;
+    gen_renamify ;
+    (* rasimpl stuff *)
+    gen_quoted_subst
+  ] in
+  let tactic_fext_funs = [
+    gen_asimpl_fext' ;
+    gen_asimpl_fext ;
+    gen_asimpl_fext_hyp ;
+    gen_auto_case_fext ;
+    gen_substify_fext ;
+    gen_renamify_fext
+  ] in
   let* tactics = a_map (fun f -> f ()) tactic_funs in
   let* tactics_fext = a_map (fun f -> f ()) tactic_fext_funs in
   let* is_gen_fext = ask_gen_fext in
