@@ -31,7 +31,7 @@ let gets f = f <$> get
 
 let rse_run m r = SE.run (run m r)
 
-(** This module contains all the tell_ functions that get called during code generation 
+(** This module contains all the tell_ functions that get called during code generation
     to put information in the state to use in the automation generation. *)
 module Tells = struct
   open AG
@@ -88,6 +88,10 @@ module Tells = struct
   let tell_notation x =
     let* info = get in
     put { info with notations = x :: info.notations }
+
+  let tell_rasimpl_quote_info x =
+    let* info = get in
+    put { info with rasimpl_quote_info = x :: info.rasimpl_quote_info }
 end
 include Tells
 
@@ -118,7 +122,7 @@ let check_open sort =
   let* opens = asks L.sigIsOpen in
   pure @@ L.SSet.mem sort opens
 
-(** Check if a sort is definable. 
+(** Check if a sort is definable.
     A sort is definable if it has any constructor. *)
 let check_definable sort =
   let* is_open = check_open sort in
@@ -146,15 +150,15 @@ let get_all_sorts = List.concat <$> get_components
 let get_component sort =
   let* components = get_components in
   match List.find_opt (fun component -> List.mem sort component) components with
-  | None -> error @@ "get_component called with unknown sort: " ^ sort 
+  | None -> error @@ "get_component called with unknown sort: " ^ sort
   | Some component -> pure component
 
-(** Check if a component is recursive. 
+(** Check if a component is recursive.
     A component is recursive if the arguments a sort of a component and the component itself overlaps.
     We can only check the first element of the component because they all have the same substitution vector. *)
 let check_recursive component =
   if (list_empty component) then error "check_recursive called with empty component."
-  else 
+  else
     let* args = get_arguments (List.hd component) in
     pure (list_nempty (list_intersection component args))
 

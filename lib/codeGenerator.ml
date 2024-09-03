@@ -68,7 +68,7 @@ module LiftGen (LGen : LIFTING_GENERATOR) : UP_GENERATOR = struct
     pure @@ AM.concat liftings
 end
 (** Wrapping modules that generate lemmas to generate all lemmas for a component. *)
-module LemGen (LGen : LEMMA_GENERATOR) : COMPONENT_GENERATOR = struct 
+module LemGen (LGen : LEMMA_GENERATOR) : COMPONENT_GENERATOR = struct
   let gen component =
     let* lemmas = a_map LGen.gen component in
     pure @@ AM.concat lemmas
@@ -112,12 +112,12 @@ module Inductives : INDUCTIVE_GENERATOR = struct
   let gen def_sorts =
     match def_sorts with
     | [] -> pure (AM.empty)
-    | l -> 
+    | l ->
       let* bodies = a_map gen_inductive_body def_sorts in
       pure (AM.(add_units Core [inductive_ bodies]))
 end
 
-module Congruences : COMPONENT_GENERATOR = struct 
+module Congruences : COMPONENT_GENERATOR = struct
   (** the proof term is just n-1 eq_trans and n ap's where n is the length of cpositions.
    ** The pattern is that with each f_equal we swap out one s_n for one t_n
    ** and the eq_trans chain all those together
@@ -154,7 +154,7 @@ module Congruences : COMPONENT_GENERATOR = struct
 
 
   let gen component =
-    let* congruences = a_concat_map (fun sort -> 
+    let* congruences = a_concat_map (fun sort ->
         let* ctors = get_constructors sort in
         a_map (genCongruence sort) ctors)
         component in
@@ -240,7 +240,7 @@ module UpRens : UP_GENERATOR = LiftGen(struct
   end)
 
 module Renamings : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `MS; `NS; `XIS (`MS, `NS) ] in
@@ -314,7 +314,7 @@ module UpSubsts : UP_GENERATOR = LiftGen(struct
   end)
 
 module Substitutions : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
 
     (** Generate the substitution function
@@ -332,6 +332,7 @@ module Substitutions : COMPONENT_GENERATOR = FixGen(struct
       let* () = tell_notation (NotationGen.SubstApply substSorts, sort) in
       let* () = tell_notation (NotationGen.Subst substSorts, sort) in
       let* () = tell_proper_instance (sort, subst_ sort, ext_ sort) in
+      let* () = tell_rasimpl_quote_info sort in
       (** type *)
       let (s, bs) = genMatchVar sort ms in
       let type_ = app_sort sort ns in
@@ -367,7 +368,7 @@ module UpIds : UP_GENERATOR = LiftGen(struct
   end)
 
 module IdLemmas : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `MS; `SIGMAS (`MS, `MS) ] in
@@ -407,7 +408,7 @@ module UpExtRens : UP_GENERATOR = LiftGen(struct
   end)
 
 module ExtRens : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `MS; `NS; `XIS (`MS, `NS); `ZETAS (`MS, `NS) ] in
@@ -449,10 +450,10 @@ module UpExtSubsts : UP_GENERATOR = LiftGen(struct
                         (abs_ref "n" eq_refl_),
                       t (ref_ n))) in
       pure @@ AM.(add_units Core [lemma_ (upExt_ sort binder) (bpms @ scopeBinders @ beq) ret (abs_ref "n" defBody)])
-  end) 
+  end)
 
 module ExtSubsts : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `MS; `NS; `SIGMAS (`MS, `NS); `TAUS (`MS, `NS) ] in
@@ -488,7 +489,7 @@ module UpRenRens : UP_GENERATOR = LiftGen(struct
   end)
 
 module CompRenRens : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     (* TODO consistent order of klmn *)
     let gen sort =
@@ -586,8 +587,8 @@ module UpSubstRens : UP_GENERATOR = LiftGen(struct
            >>> app_ref (ren_ sort) (sty_terms zetas'))
           (app_ref (up_ sort binder) (pms @ [theta])) in
       let* shift = patternSId sort binder in
-      (* TODO refactor these. But I don't see how. 
-       * We have huge terms like this in UpSubstRens, UpRenSubsts, etc. but they are too different from each 
+      (* TODO refactor these. But I don't see how.
+       * We have huge terms like this in UpSubstRens, UpRenSubsts, etc. but they are too different from each
        * other that I can easily refactor them. *)
       let t n = eqTrans_
           (app_ref (compRenRen_ sort) (pat @ sty_terms zetas'
@@ -625,7 +626,7 @@ module UpSubstRens : UP_GENERATOR = LiftGen(struct
   end)
 
 module CompSubstRens : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `KS; `LS; `MS; `SIGMAS (`MS, `KS)
@@ -713,7 +714,7 @@ module UpSubstSubsts : UP_GENERATOR = LiftGen(struct
   end)
 
 module CompSubstSubsts : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `KS; `LS; `MS; `SIGMAS (`MS, `KS)
@@ -830,7 +831,7 @@ module UpRinstInsts : UP_GENERATOR = LiftGen(struct
   end)
 
 module RinstInsts : COMPONENT_GENERATOR = FixGen(struct
-    let tag = AM.Core 
+    let tag = AM.Core
 
     let gen sort =
       let* v = V.genVariables sort [ `MS; `NS; `XIS (`MS, `NS); `SIGMAS (`MS, `NS) ] in
@@ -894,7 +895,7 @@ module LemmaRinstInsts : COMPONENT_GENERATOR = LemGen(struct
           lemma_ (rinstInst'FunPointwise_ sort) (scopeBinders) ret_pointwise proof_pointwise
         ])
 
-    let gen sort = 
+    let gen sort =
       let* lemma = gen_lemma sort in
       let* lemma_pointwise = gen_lemma_pointwise sort in
       pure @@ AM.concat [lemma; lemma_pointwise]
@@ -935,7 +936,7 @@ module LemmaVarLs : COMPONENT_GENERATOR = LemGen(struct
           lemma_ (varL'FunPointwise_ sort) scopeBinders ret_pointwise proof_pointwise
         ])
 
-    let gen sort = 
+    let gen sort =
       let* lemma = gen_lemma sort in
       let* lemma_pointwise = gen_lemma_pointwise sort in
       pure @@ AM.concat [lemma; lemma_pointwise]
@@ -978,7 +979,7 @@ module LemmaVarLRens : COMPONENT_GENERATOR = LemGen(struct
           lemma_ (varLRen'FunPointwise_ sort) scopeBinders ret_pointwise proof_pointwise
         ])
 
-    let gen sort = 
+    let gen sort =
       let* lemma = gen_lemma sort in
       let* lemma_pointwise = gen_lemma_pointwise sort in
       pure @@ AM.concat [lemma; lemma_pointwise]
@@ -1019,7 +1020,7 @@ module LemmaInstIds : COMPONENT_GENERATOR = LemGen(struct
           lemma_ (instId'FunPointwise_ sort) scopeBinders ret_pointwise proof_pointwise
         ])
 
-    let gen sort = 
+    let gen sort =
       let* lemma = gen_lemma sort in
       let* lemma_pointwise = gen_lemma_pointwise sort in
       pure @@ AM.concat [lemma; lemma_pointwise]
@@ -1065,7 +1066,7 @@ module LemmaRinstIds : COMPONENT_GENERATOR = LemGen(struct
           lemma_ (rinstId'FunPointwise_ sort) scopeBinders ret_pointwise proof_pointwise
         ])
 
-    let gen sort = 
+    let gen sort =
       let* lemma = gen_lemma sort in
       let* lemma_pointwise = gen_lemma_pointwise sort in
       pure @@ AM.concat [lemma; lemma_pointwise]

@@ -241,14 +241,34 @@ let gen_notations () =
 
 (** Definitions for the rasimpl tactic **)
 
-let gen_quoted_subst () =
-  let na = "quoted_subst" in
+(* TODO:
+
+  Currently missing info so maybe rasimpl_quote_info should be filled
+  somewhere else. I need to know which things need to be mutual.
+
+*)
+let gen_quoted_subst_body na =
+  let qna = "quoted_subst_" ^ na in
   let ctors = [
-    (* Find how to get tm, but also what to do when there are multiple syntax mutually defined *)
-    constructor_ "qsubst_atom" (arr1_ (arr1_ (ref_ "nat") (ref_ "should_be_tm")) (ref_ na))
+    constructor_ ("qsubst_atom_" ^ na) (arr1_ (arr1_ (ref_ "nat") (ref_ na)) (ref_ qna)) ;
+    constructor_ ("qsubst_comp_" ^ na) (arr_ [ ref_ qna ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_compr_" ^ na) (arr_ [ ref_ qna ; ref_ "quoted_ren" ] (ref_ qna)) ;
+    constructor_ ("qsubst_rcomp_" ^ na) (arr_ [ ref_ "quoted_ren" ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_cons_" ^ na) (arr_ [ ref_ ("quoted_" ^ na) ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_id_" ^ na) (ref_ qna) ;
+    constructor_ ("qsubst_ren_" ^ na) (arr1_ (ref_ "quoted_ren") (ref_ qna))
   ] in
-  let body = inductiveBody_ na [] ctors in
-  pure (inductive_ [ body ])
+  let bodies = [ inductiveBody_ qna [] ctors ] in
+  inductive_ bodies
+
+let gen_quotes () =
+  let* info = gets rasimpl_quote_info in
+  let qs_inds = List.map gen_quoted_subst_body info in
+  pure qs_inds
+
+let gen_rasimpl () =
+  let* q = gen_quotes () in
+  pure q
 
 let generate () =
   let* arguments = gen_arguments () in
@@ -265,9 +285,7 @@ let generate () =
     gen_asimpl_hyp ;
     gen_auto_case ;
     gen_substify ;
-    gen_renamify ;
-    (* rasimpl stuff *)
-    gen_quoted_subst
+    gen_renamify
   ] in
   let tactic_fext_funs = [
     gen_asimpl_fext' ;
@@ -280,8 +298,9 @@ let generate () =
   let* tactics = a_map (fun f -> f ()) tactic_funs in
   let* tactics_fext = a_map (fun f -> f ()) tactic_fext_funs in
   let* is_gen_fext = ask_gen_fext in
+  let* rasimpl = gen_rasimpl () in
   pure AM.(from_list [
-    (Core, classes @ instances @ notations @ proper_instances @ tactics);
-    (Fext, guard is_gen_fext tactics_fext);
+    (Core, classes @ instances @ notations @ proper_instances @ tactics @ rasimpl) ;
+    (Fext, guard is_gen_fext tactics_fext) ;
     (Extra, arguments @ opaques)
   ])

@@ -12,9 +12,9 @@ module AG = AutomationGen
 module L = Language
 module S = Settings
 
-let unscoped_preamble = "Require Import core unscoped.\n\n"
+let unscoped_preamble = "Require Import core unscoped Rasimpl.\n\n"
 let unscoped_preamble_axioms = "Require Import core_axioms unscoped_axioms.\n"
-let scoped_preamble = "Require Import core fintype.\n\n"
+let scoped_preamble = "Require Import core fintype Rasimpl.\n\n"
 let scoped_preamble_axioms = "Require Import core_axioms fintype_axioms.\n"
 let setoid_preamble = "Require Import Setoid Morphisms Relation_Definitions.\n\n"
 
@@ -24,7 +24,7 @@ let get_preamble () =
   let open RSEM in
   let* is_gen_fext = ask_gen_fext in
   let preamble =
-   if !S.use_prelude 
+   if !S.use_prelude
    then ""
    else
      match !S.scope_type with
@@ -94,7 +94,7 @@ let filter_code code =
   let tags_to_remove = [] in
   (* Check the flags if we have to remove Fext lemmas *)
   let* is_gen_fext = ask_gen_fext in
-  let tags_to_remove = if not is_gen_fext 
+  let tags_to_remove = if not is_gen_fext
     then AM.Fext :: tags_to_remove
     else tags_to_remove in
   let code_filtered = AM.remove_tags tags_to_remove code in
