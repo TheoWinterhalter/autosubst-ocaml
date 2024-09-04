@@ -85,7 +85,6 @@ type t = {
   proper_instances : (string * string * string) list;
   instances : (ClassGen.t * string * string list) list;
   notations : (NotationGen.t * string) list;
-  rasimpl_quote_info : string list ;
 }
 
 val initial : t
@@ -103,4 +102,3 @@ val classes : t -> (ClassGen.t * string) list
 val proper_instances : t -> (string * string * string) list
 val instances : t -> (ClassGen.t * string * string list) list
 val notations : t -> (NotationGen.t * string) list
-val rasimpl_quote_info : t -> string list

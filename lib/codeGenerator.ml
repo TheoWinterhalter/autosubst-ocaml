@@ -332,7 +332,6 @@ module Substitutions : COMPONENT_GENERATOR = FixGen(struct
       let* () = tell_notation (NotationGen.SubstApply substSorts, sort) in
       let* () = tell_notation (NotationGen.Subst substSorts, sort) in
       let* () = tell_proper_instance (sort, subst_ sort, ext_ sort) in
-      let* () = tell_rasimpl_quote_info sort in
       (** type *)
       let (s, bs) = genMatchVar sort ms in
       let type_ = app_sort sort ns in

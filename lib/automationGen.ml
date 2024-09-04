@@ -228,7 +228,6 @@ type t = {
   proper_instances : (string * string * string) list;
   instances : (ClassGen.t * string * string list) list;
   notations : (NotationGen.t * string) list;
-  rasimpl_quote_info : string list ;
 }
 
 let initial = {
@@ -245,7 +244,6 @@ let initial = {
   proper_instances = [];
   instances = [];
   notations = [];
-  rasimpl_quote_info = [] ;
 }
 
 let asimpl_rewrite_no_fext info = info.asimpl_rewrite_no_fext
@@ -261,4 +259,3 @@ let classes info = info.classes
 let proper_instances info = info.proper_instances
 let instances info = info.instances
 let notations info = info.notations
-let rasimpl_quote_info info = info.rasimpl_quote_info

@@ -241,12 +241,6 @@ let gen_notations () =
 
 (** Definitions for the rasimpl tactic **)
 
-(* TODO:
-
-  Currently missing info so maybe rasimpl_quote_info should be filled
-  somewhere else. I need to know which things need to be mutual.
-
-*)
 let gen_quoted_subst_body na =
   let qna = "quoted_subst_" ^ na in
   let ctors = [
@@ -258,12 +252,15 @@ let gen_quoted_subst_body na =
     constructor_ ("qsubst_id_" ^ na) (ref_ qna) ;
     constructor_ ("qsubst_ren_" ^ na) (arr1_ (ref_ "quoted_ren") (ref_ qna))
   ] in
-  let bodies = [ inductiveBody_ qna [] ctors ] in
-  inductive_ bodies
+  inductiveBody_ qna [] ctors
+
+let gen_quotes_comp component =
+  let qs_bodies = List.map gen_quoted_subst_body component in
+  pure @@ inductive_ qs_bodies
 
 let gen_quotes () =
-  let* info = gets rasimpl_quote_info in
-  let qs_inds = List.map gen_quoted_subst_body info in
+  let* components = get_components in
+  let* qs_inds = a_map gen_quotes_comp components in
   pure qs_inds
 
 let gen_rasimpl () =

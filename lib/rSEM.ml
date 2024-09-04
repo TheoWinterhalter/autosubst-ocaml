@@ -88,10 +88,6 @@ module Tells = struct
   let tell_notation x =
     let* info = get in
     put { info with notations = x :: info.notations }
-
-  let tell_rasimpl_quote_info x =
-    let* info = get in
-    put { info with rasimpl_quote_info = x :: info.rasimpl_quote_info }
 end
 include Tells
 
