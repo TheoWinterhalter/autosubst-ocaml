@@ -254,9 +254,21 @@ let gen_quoted_subst_body na =
   ] in
   inductiveBody_ qna [] ctors
 
+let gen_quoted_body na =
+  let* substs = get_substv na in
+  let substs = List.map (fun id -> ref_ ("quoted_subst_" ^ id)) substs in
+  let qna = "quoted_" ^ na in
+  let ctors = [
+    constructor_ ("qatom_" ^ na) (arr1_ (ref_ na) (ref_ qna)) ;
+    constructor_ ("qren_" ^ na) (arr1_ (ref_ "quoted_ren") (ref_ qna)) ;
+    constructor_ ("qsubst_" ^ na) (arr_ substs (ref_ qna))
+  ] in
+  pure @@ inductiveBody_ qna [] ctors
+
 let gen_quotes_comp component =
   let qs_bodies = List.map gen_quoted_subst_body component in
-  pure @@ inductive_ qs_bodies
+  let* q_bodies = a_map gen_quoted_body component in
+  pure @@ inductive_ (qs_bodies @ q_bodies)
 
 let gen_quotes () =
   let* components = get_components in

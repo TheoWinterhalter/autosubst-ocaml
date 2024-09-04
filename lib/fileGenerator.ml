@@ -12,9 +12,9 @@ module AG = AutomationGen
 module L = Language
 module S = Settings
 
-let unscoped_preamble = "Require Import core unscoped Rasimpl.\n\n"
+let unscoped_preamble = "Require Import core unscoped RASimpl.\n\n"
 let unscoped_preamble_axioms = "Require Import core_axioms unscoped_axioms.\n"
-let scoped_preamble = "Require Import core fintype Rasimpl.\n\n"
+let scoped_preamble = "Require Import core fintype RASimpl.\n\n"
 let scoped_preamble_axioms = "Require Import core_axioms fintype_axioms.\n"
 let setoid_preamble = "Require Import Setoid Morphisms Relation_Definitions.\n\n"
 
