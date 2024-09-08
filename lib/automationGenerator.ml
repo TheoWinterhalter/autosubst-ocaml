@@ -275,9 +275,27 @@ let gen_quotes () =
   let* qs_inds = a_map gen_quotes_comp components in
   pure qs_inds
 
+let gen_unquote_subst na =
+  let* v = Variables.genVariables na [ `MS; `NS; `SIGMAS (`MS, `NS) ] in
+  let [@warning "-8"] [], [ ms; ns ], [ sigmas ], scopeBinders = v in
+  let (s, bs) = Tactics.genMatchVar na ms in
+  let body = match_ (ref_ s) [] in
+  pure @@ fixpointBody_ ("unquote_subst_" ^ na) (scopeBinders @ bs) type_ body s
+
+let gen_unquotes_comp component =
+  let* s_bodies = a_map gen_unquote_subst component in
+  (* let* u_bodies = a_map gen_unquote component in *)
+  pure @@ fixpoint_ ~is_rec:true s_bodies
+
+let gen_unquotes () =
+  let* components = get_components in
+  let* defs = a_map gen_unquotes_comp components in
+  pure defs
+
 let gen_rasimpl () =
   let* q = gen_quotes () in
-  pure q
+  let* u = gen_unquotes () in
+  pure (q @ u)
 
 let generate () =
   let* arguments = gen_arguments () in
