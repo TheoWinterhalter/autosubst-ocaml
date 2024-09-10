@@ -306,7 +306,7 @@ let gen_unquote_subst na =
     I build it by hand, maybe it would be better using combinators but I don't
     know which one to use.
   *)
-  let var_na = ref_ ("var_" ^ na) in
+  let var_na = ref_ (CoqNames.var_ na) in
   let binders = [
     binder1_ ~btype:(ref_ ("quoted_subst_" ^ na)) "q"
   ] in
