@@ -30,6 +30,7 @@ val forall_ : binder_expr list -> constr_expr -> constr_expr
 val arr_ : constr_exprs -> constr_expr -> constr_expr
 val arr1_ : constr_expr -> constr_expr -> constr_expr
 val lambda_ : binder_expr list -> constr_expr -> constr_expr
+val let_ : identifier -> constr_expr -> constr_expr option -> constr_expr -> constr_expr
 val eq_ : constr_expr -> constr_expr -> constr_expr
 
 val match_ : constr_expr -> ?rtype:constr_expr -> branch_expr list -> constr_expr

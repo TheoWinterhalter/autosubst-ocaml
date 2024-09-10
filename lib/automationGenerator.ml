@@ -356,6 +356,62 @@ let gen_unquotes () =
   let* defs = a_map gen_unquotes_comp components in
   pure defs
 
+let gen_eval_subst na =
+  let* substs = get_substv na in
+  let rargs = List.map (fun id -> "r_" ^ id) substs in
+  let urargs = List.map (fun id -> unquote_ren_ (ref_ ("r_" ^ id))) substs in
+  let args = List.map (fun id -> "s_" ^ id) substs in
+  let uargs = List.map (fun id -> unquote_subst_ id (ref_ ("s_" ^ id))) substs in
+  let var_na = ref_ (CoqNames.var_ na) in
+  let binders = [
+    binder1_ ~btype:(ref_ ("quoted_subst_" ^ na)) "q"
+  ] in
+  let body = match_ (ref_ "q") [
+    branch_ ("qsubst_comp_" ^ na) (args @ [ "t" ]) (ref_ "_") ;
+    branch_ ("qsubst_compr_" ^ na) [ "s" ; "r" ] (ref_ "_") ;
+    branch_ ("qsubst_rcomp_" ^ na) (rargs @ [ "s" ]) (ref_ "_") ;
+    branch_ ("qsubst_cons_" ^ na) [ "t" ; "s" ] (ref_ "_") ;
+    branch_ ("qsubst_ren_" ^ na) [ "r" ] (ref_ "_") ;
+    branch_ "_" [] (ref_ "q") ;
+  ] in
+  pure @@ fixpointBody_ ("eval_subst_" ^ na) binders (arr1_ nat_ (ref_ na)) body "q"
+
+let rec lets l t =
+  match l with
+  | [] -> t
+  | (n,b) :: l -> let_ n b None @@ lets l t
+
+let gen_eval_ na =
+  let binders = [
+    binder1_ ~btype:(ref_ ("quoted_" ^ na)) "q"
+  ] in
+  let* substs = get_substv na in
+  let rargs = List.map (fun id -> "r_" ^ id) substs in
+  let eval_rs = List.map (fun id -> (id, app_ref "eval_ren" [ ref_ id ])) rargs in
+  let args = List.map (fun id -> "s_" ^ id) substs in
+  let sargs = List.map (fun id -> unquote_subst_ id (ref_ ("s_" ^ id))) substs in
+  let body = match_ (ref_ "q") [
+    branch_ ("qren_" ^ na) (rargs @ [ "t" ]) (
+      lets eval_rs @@
+      let_ "t" (app_ref ("eval_" ^ na) [ ref_ "t" ]) None @@
+      ref_ "_"
+    ) ;
+    branch_ ("qsubst_" ^ na) (args @ [ "t" ]) (ref_ "_") ;
+    branch_ "_" [] (ref_ "q") ;
+  ] in
+  pure @@ fixpointBody_ ("eval_" ^ na) binders (ref_ na) body "q"
+
+let gen_eval_comp component =
+  let* open_component = a_filter check_open component in
+  let* s_bodies = a_map gen_eval_subst open_component in
+  let* bodies = a_map gen_eval_ component in
+  pure @@ fixpoint_ ~is_rec:true (s_bodies @ bodies)
+
+let gen_eval () =
+  let* components = get_components in
+  let* defs = a_map gen_eval_comp components in
+  pure defs
+
 (* TODO
   I build it by hand, maybe it would be better using combinators but I don't
   know which one to use.
@@ -363,7 +419,8 @@ let gen_unquotes () =
 let gen_rasimpl () =
   let* q = gen_quotes () in
   let* u = gen_unquotes () in
-  pure (q @ u)
+  let* e = gen_eval () in
+  pure (q @ u @ e)
 
 let generate () =
   let* arguments = gen_arguments () in

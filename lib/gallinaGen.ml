@@ -106,6 +106,9 @@ let branch_ cname cargs_s bcont =
 let lambda_ binders body =
   Constrexpr_ops.mkLambdaCN binders body
 
+let let_ na tbody ty body =
+  Constrexpr_ops.mkLetInC (lname_ na, tbody, ty, body)
+
 let ident_decl_ s : Constrexpr.ident_decl  =
   (lident_ s, None)
 
