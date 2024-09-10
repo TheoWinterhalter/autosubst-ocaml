@@ -267,7 +267,8 @@ let gen_quoted_body na =
   pure @@ inductiveBody_ qna [] ctors
 
 let gen_quotes_comp component =
-  let qs_bodies = List.map gen_quoted_subst_body component in
+  let* open_component = a_filter check_open component in
+  let qs_bodies = List.map gen_quoted_subst_body open_component in
   let* q_bodies = a_map gen_quoted_body component in
   pure @@ inductive_ (qs_bodies @ q_bodies)
 
@@ -312,6 +313,7 @@ let gen_unquote_subst na =
   ] in
   let body = match_ (ref_ "q") [
     branch_ ("qsubst_atom_" ^ na) [ "s" ] (ref_ "s") ;
+    (* TODO Below, this doesn't work for types with multiple substitutions *)
     branch_ ("qsubst_comp_" ^ na) [ "s" ; "t" ] (funcomp_ (app_ (subst_ na) [ unquote_subst_ na (ref_ "s") ]) (unquote_subst_ na (ref_ "t"))) ;
     branch_ ("qsubst_compr_" ^ na) [ "s" ; "r" ] (funcomp_ (unquote_subst_ na (ref_ "s")) (unquote_ren_ (ref_ "r"))) ;
     branch_ ("qsubst_rcomp_" ^ na) [ "r" ; "s" ] (funcomp_ (app_ (ren_ na) [unquote_ren_ (ref_ "r")]) (unquote_subst_ na (ref_ "s"))) ;
@@ -336,7 +338,8 @@ let gen_unquote na =
   pure @@ fixpointBody_ ("unquote_" ^ na) binders (ref_ na) body "q"
 
 let gen_unquotes_comp component =
-  let* s_bodies = a_map gen_unquote_subst component in
+  let* open_component = a_filter check_open component in
+  let* s_bodies = a_map gen_unquote_subst open_component in
   let* u_bodies = a_map gen_unquote component in
   pure @@ fixpoint_ ~is_rec:true (s_bodies @ u_bodies)
 
