@@ -243,14 +243,15 @@ let gen_notations () =
 
 let gen_quoted_subst_body na =
   let qna = "quoted_subst_" ^ na in
+  let quoted_ren_ = ref_ "quoted_ren" in
   let ctors = [
-    constructor_ ("qsubst_atom_" ^ na) (arr1_ (arr1_ (ref_ "nat") (ref_ na)) (ref_ qna)) ;
+    constructor_ ("qsubst_atom_" ^ na) (arr1_ (arr1_ nat_ (ref_ na)) (ref_ qna)) ;
     constructor_ ("qsubst_comp_" ^ na) (arr_ [ ref_ qna ; ref_ qna ] (ref_ qna)) ;
-    constructor_ ("qsubst_compr_" ^ na) (arr_ [ ref_ qna ; ref_ "quoted_ren" ] (ref_ qna)) ;
-    constructor_ ("qsubst_rcomp_" ^ na) (arr_ [ ref_ "quoted_ren" ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_compr_" ^ na) (arr_ [ ref_ qna ; quoted_ren_ ] (ref_ qna)) ;
+    constructor_ ("qsubst_rcomp_" ^ na) (arr_ [ quoted_ren_ ; ref_ qna ] (ref_ qna)) ;
     constructor_ ("qsubst_cons_" ^ na) (arr_ [ ref_ ("quoted_" ^ na) ; ref_ qna ] (ref_ qna)) ;
     constructor_ ("qsubst_id_" ^ na) (ref_ qna) ;
-    constructor_ ("qsubst_ren_" ^ na) (arr1_ (ref_ "quoted_ren") (ref_ qna))
+    constructor_ ("qsubst_ren_" ^ na) (arr1_ quoted_ren_ (ref_ qna))
   ] in
   inductiveBody_ qna [] ctors
 
@@ -260,8 +261,8 @@ let gen_quoted_body na =
   let qna = "quoted_" ^ na in
   let ctors = [
     constructor_ ("qatom_" ^ na) (arr1_ (ref_ na) (ref_ qna)) ;
-    constructor_ ("qren_" ^ na) (arr1_ (ref_ "quoted_ren") (ref_ qna)) ;
-    constructor_ ("qsubst_" ^ na) (arr_ substs (ref_ qna))
+    constructor_ ("qren_" ^ na) (arr_ [ ref_ "quoted_ren" ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_" ^ na) (arr_ (substs @ [ ref_ qna ]) (ref_ qna))
   ] in
   pure @@ inductiveBody_ qna [] ctors
 
@@ -270,22 +271,74 @@ let gen_quotes_comp component =
   let* q_bodies = a_map gen_quoted_body component in
   pure @@ inductive_ (qs_bodies @ q_bodies)
 
+(* TODO
+
+  It's not always needed to generate quoted_subst if there is no corresponding
+  substitutions. How to solve this issue?
+
+*)
 let gen_quotes () =
   let* components = get_components in
   let* qs_inds = a_map gen_quotes_comp components in
   pure qs_inds
 
+(* TODO MOVE *)
+let funcomp_ f g =
+  app_ref "funcomp" [f ; g]
+
+let subst_ s =
+  ref_ ("subst_" ^ s)
+
+let ren_ s =
+  ref_ ("ren_" ^ s)
+
+let unquote_ na t =
+  app_ref ("unquote_" ^ na) [ t ]
+
+let unquote_ren_ r =
+  app_ref "unquote_ren" [ r ]
+
+let unquote_subst_ s t =
+  app_ref ("unquote_subst_" ^ s) [ t ]
+
 let gen_unquote_subst na =
-  let* v = Variables.genVariables na [ `MS; `NS; `SIGMAS (`MS, `NS) ] in
-  let [@warning "-8"] [], [ ms; ns ], [ sigmas ], scopeBinders = v in
-  let (s, bs) = Tactics.genMatchVar na ms in
-  let body = match_ (ref_ s) [] in
-  pure @@ fixpointBody_ ("unquote_subst_" ^ na) (scopeBinders @ bs) type_ body s
+  (* TODO
+    I build it by hand, maybe it would be better using combinators but I don't
+    know which one to use.
+  *)
+  let var_na = ref_ ("var_" ^ na) in
+  let binders = [
+    binder1_ ~btype:(ref_ ("quoted_subst_" ^ na)) "q"
+  ] in
+  let body = match_ (ref_ "q") [
+    branch_ ("qsubst_atom_" ^ na) [ "s" ] (ref_ "s") ;
+    branch_ ("qsubst_comp_" ^ na) [ "s" ; "t" ] (funcomp_ (app_ (subst_ na) [ unquote_subst_ na (ref_ "s") ]) (unquote_subst_ na (ref_ "t"))) ;
+    branch_ ("qsubst_compr_" ^ na) [ "s" ; "r" ] (funcomp_ (unquote_subst_ na (ref_ "s")) (unquote_ren_ (ref_ "r"))) ;
+    branch_ ("qsubst_rcomp_" ^ na) [ "r" ; "s" ] (funcomp_ (app_ (ren_ na) [unquote_ren_ (ref_ "r")]) (unquote_subst_ na (ref_ "s"))) ;
+    branch_ ("qsubst_cons_" ^ na) [ "t" ; "s" ] (app_ cons_ [ unquote_ na (ref_ "t") ; unquote_subst_ na (ref_ "s") ]) ;
+    branch_ ("qsubst_id_" ^ na) [] var_na ;
+    branch_ ("qsubst_ren_" ^ na) [ "r" ] (funcomp_ var_na (unquote_ren_ (ref_ "r"))) ;
+  ] in
+  pure @@ fixpointBody_ ("unquote_subst_" ^ na) binders (arr1_ nat_ (ref_ na)) body "q"
+
+let gen_unquote na =
+  let binders = [
+    binder1_ ~btype:(ref_ ("quoted_" ^ na)) "q"
+  ] in
+  let* substs = get_substv na in
+  let args = List.map (fun id -> "s_" ^ id) substs in
+  let sargs = List.map (fun id -> unquote_subst_ id (ref_ ("s_" ^ id))) substs in
+  let body = match_ (ref_ "q") [
+    branch_ ("qatom_" ^ na) [ "t" ] (ref_ "t") ;
+    branch_ ("qren_" ^ na) [ "r" ; "t" ] (app_ (ren_ na) [ unquote_ren_ (ref_ "r") ; unquote_ na (ref_ "t") ]) ;
+    branch_ ("qsubst_" ^ na) (args @ [ "t" ]) (app_ (subst_ na) (sargs @ [ unquote_ na (ref_ "t") ]))
+  ] in
+  pure @@ fixpointBody_ ("unquote_" ^ na) binders (ref_ na) body "q"
 
 let gen_unquotes_comp component =
   let* s_bodies = a_map gen_unquote_subst component in
-  (* let* u_bodies = a_map gen_unquote component in *)
-  pure @@ fixpoint_ ~is_rec:true s_bodies
+  let* u_bodies = a_map gen_unquote component in
+  pure @@ fixpoint_ ~is_rec:true (s_bodies @ u_bodies)
 
 let gen_unquotes () =
   let* components = get_components in
