@@ -242,18 +242,20 @@ let gen_notations () =
 (** Definitions for the rasimpl tactic **)
 
 let gen_quoted_subst_body na =
+  let* substs = get_substv na in
+  let substs = List.map (fun id -> ref_ ("quoted_subst_" ^ id)) substs in
   let qna = "quoted_subst_" ^ na in
   let quoted_ren_ = ref_ "quoted_ren" in
   let ctors = [
     constructor_ ("qsubst_atom_" ^ na) (arr1_ (arr1_ nat_ (ref_ na)) (ref_ qna)) ;
-    constructor_ ("qsubst_comp_" ^ na) (arr_ [ ref_ qna ; ref_ qna ] (ref_ qna)) ;
+    constructor_ ("qsubst_comp_" ^ na) (arr_ (substs @ [ ref_ qna ]) (ref_ qna)) ;
     constructor_ ("qsubst_compr_" ^ na) (arr_ [ ref_ qna ; quoted_ren_ ] (ref_ qna)) ;
     constructor_ ("qsubst_rcomp_" ^ na) (arr_ [ quoted_ren_ ; ref_ qna ] (ref_ qna)) ;
     constructor_ ("qsubst_cons_" ^ na) (arr_ [ ref_ ("quoted_" ^ na) ; ref_ qna ] (ref_ qna)) ;
     constructor_ ("qsubst_id_" ^ na) (ref_ qna) ;
     constructor_ ("qsubst_ren_" ^ na) (arr1_ quoted_ren_ (ref_ qna))
   ] in
-  inductiveBody_ qna [] ctors
+  pure @@ inductiveBody_ qna [] ctors
 
 let gen_quoted_body na =
   let* substs = get_substv na in
@@ -268,7 +270,7 @@ let gen_quoted_body na =
 
 let gen_quotes_comp component =
   let* open_component = a_filter check_open component in
-  let qs_bodies = List.map gen_quoted_subst_body open_component in
+  let* qs_bodies = a_map gen_quoted_subst_body open_component in
   let* q_bodies = a_map gen_quoted_body component in
   pure @@ inductive_ (qs_bodies @ q_bodies)
 
@@ -303,18 +305,16 @@ let unquote_subst_ s t =
   app_ref ("unquote_subst_" ^ s) [ t ]
 
 let gen_unquote_subst na =
-  (* TODO
-    I build it by hand, maybe it would be better using combinators but I don't
-    know which one to use.
-  *)
+  let* substs = get_substv na in
+  let args = List.map (fun id -> "s_" ^ id) substs in
+  let uargs = List.map (fun id -> unquote_subst_ id (ref_ ("s_" ^ id))) substs in
   let var_na = ref_ (CoqNames.var_ na) in
   let binders = [
     binder1_ ~btype:(ref_ ("quoted_subst_" ^ na)) "q"
   ] in
   let body = match_ (ref_ "q") [
     branch_ ("qsubst_atom_" ^ na) [ "s" ] (ref_ "s") ;
-    (* TODO Below, this doesn't work for types with multiple substitutions *)
-    branch_ ("qsubst_comp_" ^ na) [ "s" ; "t" ] (funcomp_ (app_ (subst_ na) [ unquote_subst_ na (ref_ "s") ]) (unquote_subst_ na (ref_ "t"))) ;
+    branch_ ("qsubst_comp_" ^ na) (args @ [ "t" ]) (funcomp_ (app_ (subst_ na) uargs) (unquote_subst_ na (ref_ "t"))) ;
     branch_ ("qsubst_compr_" ^ na) [ "s" ; "r" ] (funcomp_ (unquote_subst_ na (ref_ "s")) (unquote_ren_ (ref_ "r"))) ;
     branch_ ("qsubst_rcomp_" ^ na) [ "r" ; "s" ] (funcomp_ (app_ (ren_ na) [unquote_ren_ (ref_ "r")]) (unquote_subst_ na (ref_ "s"))) ;
     branch_ ("qsubst_cons_" ^ na) [ "t" ; "s" ] (app_ cons_ [ unquote_ na (ref_ "t") ; unquote_subst_ na (ref_ "s") ]) ;
@@ -348,6 +348,10 @@ let gen_unquotes () =
   let* defs = a_map gen_unquotes_comp components in
   pure defs
 
+(* TODO
+  I build it by hand, maybe it would be better using combinators but I don't
+  know which one to use.
+*)
 let gen_rasimpl () =
   let* q = gen_quotes () in
   let* u = gen_unquotes () in
