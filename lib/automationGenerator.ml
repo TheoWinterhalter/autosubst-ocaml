@@ -387,6 +387,7 @@ let gen_eval_ na =
   ] in
   let* substs = get_substv na in
   let rargs = List.map (fun id -> "r_" ^ id) substs in
+  let rargs' = List.map (fun id -> "r_" ^ id ^ "'") substs in
   let eval_rs = List.map (fun id -> (id, app_ref "eval_ren" [ ref_ id ])) rargs in
   let args = List.map (fun id -> "s_" ^ id) substs in
   let sargs = List.map (fun id -> unquote_subst_ id (ref_ ("s_" ^ id))) substs in
@@ -394,7 +395,27 @@ let gen_eval_ na =
     branch_ ("qren_" ^ na) (rargs @ [ "t" ]) (
       lets eval_rs @@
       let_ "t" (app_ref ("eval_" ^ na) [ ref_ "t" ]) None @@
-      ref_ "_"
+      match_ (ref_ "t") [
+        branch_ ("qren_" ^ na) (rargs' @ [ "t" ]) (
+          app_ref ("qren_" ^ na) (
+            List.map (fun id ->
+              app_ref "qren_comp" [ ref_ ("r_" ^ id) ; ref_ ("r_" ^ id ^ "'") ]
+            ) substs @ [ ref_ "t" ]
+          )
+        ) ;
+        branch_ ("qsubst_" ^ na) (args @ [ "t" ]) (
+          app_ref ("qsubst_" ^ na) (
+            List.map (fun id ->
+              app_ref ("qsubst_comp_" ^ id) [ app_ref ("qsubst_ren_" ^ id) [ ref_ ("r_" ^ id) ] ; ref_ ("s_" ^ id) ]
+            ) substs @ [ ref_ "t" ]
+          )
+        ) ;
+        branch_ "_" [] (
+          (* With multiple renamings it's unclear what we want to do here *)
+          (* Should it be a new view? *)
+          match_ (app_ref "test_qren_id" [ ref_ "r_uh_oh" ]) []
+        )
+      ]
     ) ;
     branch_ ("qsubst_" ^ na) (args @ [ "t" ]) (ref_ "_") ;
     branch_ "_" [] (ref_ "q") ;
